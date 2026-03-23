@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- GOOGLE SHEETS: Paste your Apps Script Web App URL below -->
     <meta name="google-script-url" content="https://script.google.com/macros/s/AKfycbwC_VOY6y6sULJ6wXvDVyc3_ZXVcKtM4xDyWGQ6gFVkpLAl7h66dCi2lQ3qK2F6jihn/exec">
+    <!-- ADMIN PASSWORD HASH (SHA-256 of your password). Default password: admin2026 -->
+    <!-- To change: open browser console, run: crypto.subtle.digest('SHA-256', new TextEncoder().encode('YOUR_NEW_PASSWORD')).then(b=>console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''))) -->
+    <meta name="admin-password-hash" content="6051fc84a7a0d74c225fb18a496b09952da5642e60723ecae543298edd7d82d6">
     <title>Khảo sát về Bình đẳng Giới trong Quản trị Chuỗi Cung ứng</title>
     <style>
         :root {
@@ -1052,9 +1055,43 @@
         }
 
         // ==================== ADMIN ====================
+        const ADMIN_HASH = (document.querySelector('meta[name="admin-password-hash"]') || {}).content || '';
+        let adminAuthenticated = sessionStorage.getItem('admin_auth') === 'true';
+
+        function sha256(str) {
+            return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)).then(function(buf) {
+                return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+            });
+        }
+
         function toggleAdmin() {
-            document.getElementById('adminPanel').classList.toggle('active');
-            document.getElementById('adminOverlay').classList.toggle('active');
+            var panel = document.getElementById('adminPanel');
+            // If panel is already open, just close it
+            if (panel.classList.contains('active')) {
+                panel.classList.remove('active');
+                document.getElementById('adminOverlay').classList.remove('active');
+                return;
+            }
+            // If already authenticated this session, open directly
+            if (adminAuthenticated) {
+                panel.classList.add('active');
+                document.getElementById('adminOverlay').classList.add('active');
+                return;
+            }
+            // Prompt for password
+            var pwd = prompt('Nhập mật khẩu quản trị:');
+            if (!pwd) return;
+            sha256(pwd).then(function(hash) {
+                if (hash === ADMIN_HASH) {
+                    adminAuthenticated = true;
+                    sessionStorage.setItem('admin_auth', 'true');
+                    panel.classList.add('active');
+                    document.getElementById('adminOverlay').classList.add('active');
+                    showToast('Đăng nhập quản trị thành công!', '#27ae60');
+                } else {
+                    showToast('Sai mật khẩu. Truy cập bị từ chối.', '#e74c3c');
+                }
+            });
         }
 
         function addCustomQuestion() {
